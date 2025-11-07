@@ -88,3 +88,27 @@ def get_s3_bucket(session=None):
             return None
     
     return bucket_name
+
+def discover_video_files(session, s3_bucket, video_prefix):
+    """Discover available video files in S3"""
+    s3_client = session.client('s3')
+    try:
+        response = s3_client.list_objects_v2(Bucket=s3_bucket, Prefix=video_prefix)
+        if 'Contents' not in response:
+            return []
+        
+        video_files = []
+        for obj in response['Contents']:
+            key = obj['Key']
+            if key.endswith('.mp4'):
+                # Check if corresponding prompt file exists
+                prompt_key = key.replace('.mp4', '_prompt.txt')
+                try:
+                    s3_client.head_object(Bucket=s3_bucket, Key=prompt_key)
+                    video_files.append(key.split('/')[-1])
+                except:
+                    pass
+        return video_files
+    except Exception as e:
+        print(f"Error discovering videos: {e}")
+        return []
